@@ -23,10 +23,13 @@ public class AjustesActivity extends AppCompatActivity {
     private Switch switchNotificaciones, switchVibracion, switchSonido;
     private SeekBar seekBarVolumen, seekBarRepeticiones;
     private TextView tvVolumen, tvRepeticiones, tvDiasAntelacion;
-    private MaterialButton btnGuardar, btnVolver, btnDiasAntelacion, btnResetearDatos;
+    private MaterialButton btnGuardar, btnVolver, btnDiasAntelacion, btnResetearDatos, btnLogout, btnEliminarCuenta;
 
     private SharedPreferences preferences;
     private int diasAntelacionStock = 3;
+    
+    private com.controlmedicamentos.myapplication.services.AuthService authService;
+    private com.controlmedicamentos.myapplication.services.FirebaseService firebaseService;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -36,6 +39,10 @@ public class AjustesActivity extends AppCompatActivity {
         inicializarVistas();
         cargarPreferencias();
         configurarListeners();
+        
+        // Inicializar servicios
+        authService = new com.controlmedicamentos.myapplication.services.AuthService(this);
+        firebaseService = new com.controlmedicamentos.myapplication.services.FirebaseService(this);
     }
 
     private void inicializarVistas() {
@@ -68,6 +75,8 @@ public class AjustesActivity extends AppCompatActivity {
         btnVolver = findViewById(R.id.btnVolver);
         btnDiasAntelacion = findViewById(R.id.btnDiasAntelacion);
         btnResetearDatos = findViewById(R.id.btnResetearDatos);
+        btnLogout = findViewById(R.id.btnLogout);
+        btnEliminarCuenta = findViewById(R.id.btnEliminarCuenta);
 
         // SharedPreferences
         preferences = getSharedPreferences("ControlMedicamentos", MODE_PRIVATE);
@@ -128,6 +137,20 @@ public class AjustesActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 mostrarDialogoResetear();
+            }
+        });
+
+        btnLogout.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                cerrarSesion();
+            }
+        });
+
+        btnEliminarCuenta.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                mostrarDialogoEliminarCuenta();
             }
         });
 
@@ -233,5 +256,88 @@ public class AjustesActivity extends AppCompatActivity {
 
         Toast.makeText(this, "Datos reseteados", Toast.LENGTH_SHORT).show();
         cargarPreferencias();
+    }
+
+    private void cerrarSesion() {
+        new AlertDialog.Builder(this)
+                .setTitle("Cerrar Sesión")
+                .setMessage("¿Estás seguro de que quieres cerrar sesión?")
+                .setPositiveButton("Cerrar Sesión", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        authService.logout();
+                        // Redirigir a LoginActivity
+                        android.content.Intent intent = new android.content.Intent(AjustesActivity.this, LoginActivity.class);
+                        intent.setFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK | android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                        startActivity(intent);
+                        finish();
+                    }
+                })
+                .setNegativeButton("Cancelar", null)
+                .show();
+    }
+
+    private void mostrarDialogoEliminarCuenta() {
+        // Crear diálogo para ingresar credenciales
+        android.view.View dialogView = getLayoutInflater().inflate(R.layout.dialog_eliminar_cuenta, null);
+        TextInputEditText etEmailEliminar = dialogView.findViewById(R.id.etEmailEliminar);
+        TextInputEditText etPasswordEliminar = dialogView.findViewById(R.id.etPasswordEliminar);
+        
+        // Prellenar email si está disponible
+        com.google.firebase.auth.FirebaseUser currentUser = authService.getCurrentUser();
+        if (currentUser != null && currentUser.getEmail() != null) {
+            etEmailEliminar.setText(currentUser.getEmail());
+        }
+
+        new AlertDialog.Builder(this)
+                .setTitle("Eliminar Cuenta Permanentemente")
+                .setMessage("⚠️ Esta acción es permanente y no se puede deshacer. Se eliminarán:\n\n" +
+                        "• Tu cuenta de usuario\n" +
+                        "• Todos tus medicamentos\n" +
+                        "• Todos tus asistentes\n" +
+                        "• Todos tus registros e historial")
+                .setView(dialogView)
+                .setPositiveButton("Eliminar Cuenta", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        String email = etEmailEliminar.getText().toString().trim();
+                        String password = etPasswordEliminar.getText().toString();
+                        
+                        if (email.isEmpty() || password.isEmpty()) {
+                            Toast.makeText(AjustesActivity.this, "Por favor completa todos los campos", Toast.LENGTH_LONG).show();
+                            return;
+                        }
+                        
+                        eliminarCuenta(email, password);
+                    }
+                })
+                .setNegativeButton("Cancelar", null)
+                .show();
+    }
+
+    private void eliminarCuenta(String email, String password) {
+        // Verificar si es usuario de Google
+        com.google.firebase.auth.FirebaseUser currentUser = authService.getCurrentUser();
+        boolean esGoogle = false;
+        if (currentUser != null) {
+            for (com.google.firebase.auth.UserInfo provider : currentUser.getProviderData()) {
+                if ("google.com".equals(provider.getProviderId())) {
+                    esGoogle = true;
+                    break;
+                }
+            }
+        }
+        
+        // Implementar eliminación de cuenta
+        // Por ahora mostrar mensaje de que está en desarrollo
+        Toast.makeText(this, "Funcionalidad de eliminar cuenta en desarrollo. Se implementará próximamente.", Toast.LENGTH_LONG).show();
+        
+        // TODO: Implementar eliminación completa de cuenta
+        // 1. Reautenticar usuario
+        // 2. Eliminar todos los medicamentos
+        // 3. Eliminar todos los asistentes
+        // 4. Eliminar documento de usuario en Firestore
+        // 5. Eliminar usuario de Firebase Auth
+        // 6. Redirigir a LoginActivity
     }
 }

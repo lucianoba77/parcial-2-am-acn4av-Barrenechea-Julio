@@ -69,20 +69,38 @@ public class AuthService {
      * @param callback Callback para manejar el resultado
      */
     public void loginUser(String email, String password, AuthCallback callback) {
+        // Logging detallado para debug
+        Log.d(TAG, "Intentando login con email: " + email);
+        Log.d(TAG, "Longitud de contraseña: " + (password != null ? password.length() : 0));
+        
         mAuth.signInWithEmailAndPassword(email, password)
             .addOnCompleteListener(new OnCompleteListener<AuthResult>() {
                 @Override
                 public void onComplete(@NonNull Task<AuthResult> task) {
                     if (task.isSuccessful()) {
-                        Log.d(TAG, "Usuario autenticado exitosamente");
                         FirebaseUser user = mAuth.getCurrentUser();
+                        Log.d(TAG, "Usuario autenticado exitosamente. UID: " + 
+                            (user != null ? user.getUid() : "null"));
                         if (callback != null) {
                             callback.onSuccess(user);
                         }
                     } else {
-                        Log.e(TAG, "Error al autenticar usuario", task.getException());
+                        Exception exception = task.getException();
+                        if (exception != null) {
+                            Log.e(TAG, "Error al autenticar usuario", exception);
+                            String errorMessage = exception.getMessage();
+                            Log.e(TAG, "Mensaje de error: " + errorMessage);
+                            
+                            // Si es FirebaseAuthException, obtener el código de error
+                            if (exception instanceof com.google.firebase.auth.FirebaseAuthException) {
+                                com.google.firebase.auth.FirebaseAuthException authException = 
+                                    (com.google.firebase.auth.FirebaseAuthException) exception;
+                                String errorCode = authException.getErrorCode();
+                                Log.e(TAG, "Código de error Firebase: " + errorCode);
+                            }
+                        }
                         if (callback != null) {
-                            callback.onError(task.getException());
+                            callback.onError(exception);
                         }
                     }
                 }

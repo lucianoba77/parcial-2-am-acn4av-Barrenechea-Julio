@@ -10,12 +10,14 @@
 
     <!-- Logo o título -->
     <ImageView
-        android:layout_width="120dp"
-        android:layout_height="120dp"
+        android:layout_width="160dp"
+        android:layout_height="160dp"
         android:layout_marginTop="@dimen/margin_xlarge"
-        android:layout_marginBottom="@dimen/margin_xlarge"
-        android:src="@mipmap/ic_launcher"
-        android:contentDescription="@string/app_name" />
+        android:layout_marginBottom="@dimen/margin_medium"
+        android:src="@mipmap/mis_medicinas"
+        android:contentDescription="@string/app_name"
+        android:scaleType="centerInside"
+        android:adjustViewBounds="true" />
 
     <!-- Título -->
     <TextView
@@ -83,6 +85,21 @@
 
             </com.google.android.material.textfield.TextInputLayout>
 
+            <!-- Link para recuperar contraseña -->
+            <TextView
+                android:id="@+id/tvOlvidoPassword"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="end"
+                android:text="@string/forgot_password"
+                android:textSize="@dimen/text_size_small"
+                android:textColor="@color/primary"
+                android:layout_marginBottom="@dimen/margin_medium"
+                android:padding="8dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:foreground="?attr/selectableItemBackground" />
+
             <!-- Botón Login -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnLogin"
@@ -107,6 +124,16 @@
                 app:strokeColor="@color/primary"
                 app:strokeWidth="2dp"
                 style="@style/MedicineButton" />
+
+            <!-- ProgressBar para mostrar carga -->
+            <ProgressBar
+                android:id="@+id/progressBar"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:layout_marginTop="@dimen/margin_medium"
+                android:visibility="gone"
+                android:indeterminateTint="@color/primary" />
 
         </LinearLayout>
 

@@ -136,21 +136,46 @@ public class Medicamento {
     private void generarHorariosTomas() {
         horariosTomas.clear();
 
-        if (tomasDiarias <= 0) return;
+        // Si no hay tomas diarias, no generar horarios (medicamento ocasional)
+        if (tomasDiarias <= 0) {
+            return;
+        }
+        
+        // Verificar que horarioPrimeraToma no sea null o vacío
+        if (horarioPrimeraToma == null || horarioPrimeraToma.isEmpty()) {
+            // Usar valor por defecto si no está establecido
+            horarioPrimeraToma = "00:00";
+        }
 
         // Calcular intervalo entre tomas (24 horas / tomas diarias)
         int intervaloHoras = 24 / tomasDiarias;
 
         // Parsear hora inicial
-        String[] partesHora = horarioPrimeraToma.split(":");
-        int horaInicial = Integer.parseInt(partesHora[0]);
-        int minutoInicial = Integer.parseInt(partesHora[1]);
+        try {
+            String[] partesHora = horarioPrimeraToma.split(":");
+            if (partesHora.length < 2) {
+                // Si el formato no es correcto, usar valor por defecto
+                partesHora = new String[]{"00", "00"};
+            }
+            int horaInicial = Integer.parseInt(partesHora[0]);
+            int minutoInicial = Integer.parseInt(partesHora[1]);
 
-        // Generar horarios
-        for (int i = 0; i < tomasDiarias; i++) {
-            int hora = (horaInicial + (i * intervaloHoras)) % 24;
-            String horario = String.format("%02d:%02d", hora, minutoInicial);
-            horariosTomas.add(horario);
+            // Generar horarios
+            for (int i = 0; i < tomasDiarias; i++) {
+                int hora = (horaInicial + (i * intervaloHoras)) % 24;
+                String horario = String.format("%02d:%02d", hora, minutoInicial);
+                horariosTomas.add(horario);
+            }
+        } catch (Exception e) {
+            // Si hay algún error al parsear, usar valor por defecto
+            horarioPrimeraToma = "00:00";
+            int horaInicial = 0;
+            int minutoInicial = 0;
+            for (int i = 0; i < tomasDiarias; i++) {
+                int hora = (horaInicial + (i * intervaloHoras)) % 24;
+                String horario = String.format("%02d:%02d", hora, minutoInicial);
+                horariosTomas.add(horario);
+            }
         }
     }
 

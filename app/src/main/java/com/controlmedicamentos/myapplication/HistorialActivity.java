@@ -15,7 +15,9 @@ import com.github.mikephil.charting.formatter.IndexAxisValueFormatter;
 import com.google.android.material.button.MaterialButton;
 import com.controlmedicamentos.myapplication.adapters.HistorialAdapter;
 import com.controlmedicamentos.myapplication.models.Medicamento;
-import com.controlmedicamentos.myapplication.utils.DatosPrueba;
+import com.controlmedicamentos.myapplication.services.AuthService;
+import com.controlmedicamentos.myapplication.services.FirebaseService;
+import com.controlmedicamentos.myapplication.utils.NetworkUtils;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -27,11 +29,23 @@ public class HistorialActivity extends AppCompatActivity {
     private MaterialButton btnVolver;
     private HistorialAdapter adapter;
     private List<Medicamento> tratamientosConcluidos;
+    private AuthService authService;
+    private FirebaseService firebaseService;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_historial);
+
+        // Inicializar servicios
+        authService = new AuthService();
+        firebaseService = new FirebaseService();
+
+        // Verificar autenticación
+        if (!authService.isUserLoggedIn()) {
+            finish();
+            return;
+        }
 
         inicializarVistas();
         configurarGrafico();
@@ -78,33 +92,74 @@ public class HistorialActivity extends AppCompatActivity {
     }
 
     private void cargarDatos() {
-        // Cargar estadísticas generales
-        DatosPrueba.EstadisticasAdherencia estadisticas = DatosPrueba.obtenerEstadisticas(this);
-        tvEstadisticasGenerales.setText(String.format(
-                "Adherencia General: %.1f%%\nMedicamentos Activos: %d\nMedicamentos Pausados: %d\nTotal Medicamentos: %d",
-                estadisticas.getPorcentajeAdherencia(),
-                estadisticas.medicamentosActivos,
-                estadisticas.medicamentosPausados,
-                estadisticas.totalMedicamentos
-        ));
+        // Verificar conexión a internet
+        if (!NetworkUtils.isNetworkAvailable(this)) {
+            tvEstadisticasGenerales.setText("No hay conexión a internet");
+            return;
+        }
 
-        // Cargar gráfico de adherencia por medicamento
-        cargarGraficoAdherencia();
+        // Cargar todos los medicamentos desde Firebase
+        firebaseService.obtenerMedicamentos(new FirebaseService.FirestoreListCallback() {
+            @Override
+            public void onSuccess(List<?> result) {
+                List<Medicamento> todosLosMedicamentos = (List<Medicamento>) result;
+                
+                // Calcular estadísticas
+                int totalMedicamentos = todosLosMedicamentos.size();
+                int medicamentosActivos = 0;
+                int medicamentosPausados = 0;
 
-        // Cargar tratamientos concluidos
-        tratamientosConcluidos = DatosPrueba.obtenerMedicamentosPausados(this);
-        adapter.actualizarMedicamentos(tratamientosConcluidos);
+                for (Medicamento medicamento : todosLosMedicamentos) {
+                    if (medicamento.isActivo() && !medicamento.isPausado()) {
+                        medicamentosActivos++;
+                    }
+                    if (medicamento.isPausado()) {
+                        medicamentosPausados++;
+                    }
+                }
+
+                // Mostrar estadísticas generales (simplificadas por ahora)
+                tvEstadisticasGenerales.setText(String.format(
+                        "Medicamentos Activos: %d\nMedicamentos Pausados: %d\nTotal Medicamentos: %d",
+                        medicamentosActivos,
+                        medicamentosPausados,
+                        totalMedicamentos
+                ));
+
+                // Cargar gráfico de adherencia por medicamento
+                cargarGraficoAdherencia(todosLosMedicamentos);
+
+                // Cargar tratamientos concluidos (pausados)
+                tratamientosConcluidos = new ArrayList<>();
+                for (Medicamento medicamento : todosLosMedicamentos) {
+                    if (medicamento.isPausado()) {
+                        tratamientosConcluidos.add(medicamento);
+                    }
+                }
+                adapter.actualizarMedicamentos(tratamientosConcluidos);
+            }
+
+            @Override
+            public void onError(Exception exception) {
+                tvEstadisticasGenerales.setText("Error al cargar datos");
+            }
+        });
     }
 
-    private void cargarGraficoAdherencia() {
-        List<Medicamento> medicamentos = DatosPrueba.obtenerMedicamentosPrueba(this);
-        DatosPrueba.EstadisticasAdherencia estadisticas = DatosPrueba.obtenerEstadisticas(this);
+    private void cargarGraficoAdherencia(List<Medicamento> medicamentos) {
+        if (medicamentos.isEmpty()) {
+            return;
+        }
+
         List<BarEntry> entries = new ArrayList<>();
         List<String> labels = new ArrayList<>();
 
-        for (int i = 0; i < medicamentos.size(); i++) {
+        // Por ahora mostramos un gráfico simplificado
+        // TODO: Calcular adherencia real desde las tomas en Firebase
+        for (int i = 0; i < medicamentos.size() && i < 5; i++) { // Máximo 5 medicamentos en el gráfico
             Medicamento medicamento = medicamentos.get(i);
-            float adherencia = (float) estadisticas.getPorcentajeAdherencia();
+            // Valor temporal - se calculará desde las tomas reales más adelante
+            float adherencia = 85.0f; // Placeholder
             entries.add(new BarEntry(i, adherencia));
             labels.add(medicamento.getNombre());
         }

@@ -24,6 +24,7 @@ public class BotiquinAdapter extends RecyclerView.Adapter<BotiquinAdapter.Botiqu
         void onEditarClick(Medicamento medicamento);
         void onEliminarClick(Medicamento medicamento);
         void onAgregarStockClick(Medicamento medicamento);
+        void onRestarStockClick(Medicamento medicamento); // Para medicamentos ocasionales
     }
 
     public BotiquinAdapter(Context context, List<Medicamento> medicamentos) {
@@ -68,6 +69,7 @@ public class BotiquinAdapter extends RecyclerView.Adapter<BotiquinAdapter.Botiqu
         private MaterialButton btnEditar;
         private MaterialButton btnEliminar;
         private MaterialButton btnAgregarStock;
+        private MaterialButton btnRestarStock;
 
         public BotiquinViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -80,6 +82,7 @@ public class BotiquinAdapter extends RecyclerView.Adapter<BotiquinAdapter.Botiqu
             btnEditar = itemView.findViewById(R.id.btnEditar);
             btnEliminar = itemView.findViewById(R.id.btnEliminar);
             btnAgregarStock = itemView.findViewById(R.id.btnAgregarStock);
+            btnRestarStock = itemView.findViewById(R.id.btnRestarStock);
         }
 
         public void bind(Medicamento medicamento) {
@@ -103,18 +106,28 @@ public class BotiquinAdapter extends RecyclerView.Adapter<BotiquinAdapter.Botiqu
                 btnEliminar.setVisibility(View.VISIBLE);
                 btnEditar.setVisibility(View.GONE);
                 btnAgregarStock.setVisibility(View.GONE);
+                btnRestarStock.setVisibility(View.GONE);
             } else if (medicamento.isPausado()) {
                 tvEstado.setText("Pausado");
                 tvEstado.setTextColor(context.getColor(R.color.warning));
                 btnEditar.setVisibility(View.VISIBLE);
                 btnEliminar.setVisibility(View.VISIBLE);
                 btnAgregarStock.setVisibility(View.GONE);
+                btnRestarStock.setVisibility(View.GONE);
             } else {
                 tvEstado.setText("Activo");
                 tvEstado.setTextColor(context.getColor(R.color.success));
                 btnEditar.setVisibility(View.VISIBLE);
                 btnEliminar.setVisibility(View.VISIBLE);
                 btnAgregarStock.setVisibility(View.VISIBLE);
+                
+                // Mostrar botón de restar stock solo para medicamentos ocasionales con stock > 0
+                // Consistente con React: BotiquinScreen.jsx líneas 144-160
+                if (medicamento.getTomasDiarias() == 0 && medicamento.getStockActual() > 0) {
+                    btnRestarStock.setVisibility(View.VISIBLE);
+                } else {
+                    btnRestarStock.setVisibility(View.GONE);
+                }
             }
 
             // Configurar color de fondo
@@ -136,6 +149,12 @@ public class BotiquinAdapter extends RecyclerView.Adapter<BotiquinAdapter.Botiqu
             btnAgregarStock.setOnClickListener(v -> {
                 if (listener != null) {
                     listener.onAgregarStockClick(medicamento);
+                }
+            });
+
+            btnRestarStock.setOnClickListener(v -> {
+                if (listener != null) {
+                    listener.onRestarStockClick(medicamento);
                 }
             });
         }

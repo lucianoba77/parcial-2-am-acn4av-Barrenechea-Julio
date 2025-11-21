@@ -8,6 +8,16 @@
     <string name="login_subtitle">Tu asistente personal de medicamentos</string>
     <string name="login_toggle_login">Iniciar Sesión</string>
     <string name="login_toggle_register">Registrarse</string>
+    <string name="login_email_hint">Correo electrónico</string>
+    <string name="login_password_hint">Contraseña</string>
+    <string name="login_button">Iniciar Sesión</string>
+    <string name="register_button">Crear Cuenta</string>
+    <string name="forgot_password">¿Olvidaste tu contraseña?</string>
+    <string name="login_help_text">¿Necesitas ayuda? Contacta con tu familiar responsable</string>
+    <string name="reset_password_dialog_title">Recuperar contraseña</string>
+    <string name="reset_password_dialog_message">Ingresa tu email y te enviaremos un enlace para recuperar tu contraseña</string>
+    <string name="reset_password_success">Email de recuperación enviado. Revisa tu bandeja de entrada.</string>
+    <string name="reset_password_error">Error al enviar email de recuperación. Verifica tu email e intenta nuevamente.</string>
 
     <!-- Main Activity -->
     <string name="main_greeting">¡Hola, %s!</string>
@@ -101,6 +111,10 @@
     <string name="field_activate_alarms">Activar alarmas</string>
     <string name="field_alarm_tone">Tono de alarma</string>
     <string name="field_alarm_repetitions">Repeticiones de alarma</string>
+    <string name="hint_doses_example">Ej: 3</string>
+    <string name="hint_time_example">08:00</string>
+    <string name="hint_stock_example">Ej: 30</string>
+    <string name="hint_treatment_days_example">-1 para crónico</string>
 
     <!-- Historial -->
     <string name="historial_title">Historial</string>
@@ -111,13 +125,28 @@
     <string name="weekly_summary">Resumen semanal</string>
     <string name="fulfilled">Cumplido</string>
     <string name="missed">Perdido</string>
+    <string name="statistics_title">Estadísticas Generales</string>
+    <string name="loading_statistics">Cargando estadísticas...</string>
+    <string name="adherence_chart_title">Adherencia por Medicamento</string>
+    <string name="completed_treatments_title">Tratamientos Concluidos</string>
+    <string name="treatment_start_date">Fecha de inicio</string>
+    <string name="treatment_end_date">Fecha de fin</string>
+    <string name="treatment_duration">Duración del tratamiento</string>
 
     <!-- Ajustes -->
     <string name="ajustes_title">Ajustes</string>
     <string name="personal_info">Información personal</string>
+    <string name="user_data_title">Datos del Usuario</string>
     <string name="alarms">Alarmas</string>
+    <string name="notifications_title">Configuración de Notificaciones</string>
     <string name="stock_alerts">Alertas de stock</string>
+    <string name="stock_settings_title">Configuración de Stock</string>
     <string name="activate_notifications">Activar notificaciones</string>
+    <string name="enable_notifications">Habilitar notificaciones</string>
+    <string name="enable_vibration">Habilitar vibración</string>
+    <string name="enable_sound">Habilitar sonido</string>
+    <string name="volume_level">Nivel de volumen</string>
+    <string name="repetitions_count">Número de repeticiones</string>
     <string name="alarm_tone">Tono de alarma</string>
     <string name="alarm_repetitions">Repeticiones de alarma</string>
     <string name="days_before_low_stock">Días antes de aviso por stock bajo</string>

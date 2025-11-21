@@ -12,7 +12,9 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.controlmedicamentos.myapplication.adapters.BotiquinAdapter;
 import com.controlmedicamentos.myapplication.models.Medicamento;
-import com.controlmedicamentos.myapplication.utils.DatosPrueba;
+import com.controlmedicamentos.myapplication.services.AuthService;
+import com.controlmedicamentos.myapplication.services.FirebaseService;
+import com.controlmedicamentos.myapplication.utils.NetworkUtils;
 import java.util.List;
 import android.content.Intent;
 
@@ -23,11 +25,23 @@ public class BotiquinActivity extends AppCompatActivity implements BotiquinAdapt
     private MaterialButton btnVolver;
     private BotiquinAdapter adapter;
     private List<Medicamento> medicamentos;
+    private AuthService authService;
+    private FirebaseService firebaseService;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_botiquin);
+
+        // Inicializar servicios
+        authService = new AuthService();
+        firebaseService = new FirebaseService();
+
+        // Verificar autenticación
+        if (!authService.isUserLoggedIn()) {
+            finish();
+            return;
+        }
 
         inicializarVistas();
         configurarRecyclerView();
@@ -49,8 +63,32 @@ public class BotiquinActivity extends AppCompatActivity implements BotiquinAdapt
     }
 
     private void cargarMedicamentos() {
-        medicamentos = DatosPrueba.obtenerMedicamentosPrueba(this);
-        adapter.actualizarMedicamentos(medicamentos);
+        // Verificar conexión a internet
+        if (!NetworkUtils.isNetworkAvailable(this)) {
+            Toast.makeText(this, "No hay conexión a internet", Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        // Cargar todos los medicamentos desde Firebase
+        firebaseService.obtenerMedicamentos(new FirebaseService.FirestoreListCallback() {
+            @Override
+            public void onSuccess(List<?> result) {
+                medicamentos = (List<Medicamento>) result;
+                adapter.actualizarMedicamentos(medicamentos);
+                
+                if (medicamentos.isEmpty()) {
+                    Toast.makeText(BotiquinActivity.this, "No tienes medicamentos registrados", Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onError(Exception exception) {
+                Toast.makeText(BotiquinActivity.this, 
+                    "Error al cargar medicamentos: " + 
+                    (exception != null ? exception.getMessage() : "Error desconocido"), 
+                    Toast.LENGTH_LONG).show();
+            }
+        });
     }
 
     private void configurarListeners() {
@@ -85,8 +123,50 @@ public class BotiquinActivity extends AppCompatActivity implements BotiquinAdapt
         mostrarDialogoAgregarStock(medicamento);
     }
 
+    @Override
+    public void onRestarStockClick(Medicamento medicamento) {
+        // Restar stock para medicamento ocasional
+        // Consistente con React: BotiquinScreen.jsx líneas 148-155
+        if (medicamento.getTomasDiarias() == 0 && medicamento.getStockActual() > 0) {
+            // Verificar conexión a internet
+            if (!NetworkUtils.isNetworkAvailable(this)) {
+                Toast.makeText(this, "No hay conexión a internet", Toast.LENGTH_LONG).show();
+                return;
+            }
+
+            firebaseService.restarStockMedicamento(medicamento.getId(), new FirebaseService.FirestoreCallback() {
+                @Override
+                public void onSuccess(Object result) {
+                    // El listener en tiempo real actualizará la lista automáticamente
+                    if (result instanceof java.util.Map) {
+                        @SuppressWarnings("unchecked")
+                        java.util.Map<String, Object> resultado = (java.util.Map<String, Object>) result;
+                        Object stockActualObj = resultado.get("stockActual");
+                        int nuevoStock = stockActualObj instanceof Number ? ((Number) stockActualObj).intValue() : 0;
+                        Toast.makeText(BotiquinActivity.this, 
+                            "Toma registrada. Stock actualizado: " + nuevoStock + " unidades restantes", 
+                            Toast.LENGTH_SHORT).show();
+                    } else {
+                        Toast.makeText(BotiquinActivity.this, "Toma registrada exitosamente", Toast.LENGTH_SHORT).show();
+                    }
+                }
+
+                @Override
+                public void onError(Exception exception) {
+                    Toast.makeText(BotiquinActivity.this, 
+                        "Error al registrar toma: " + 
+                        (exception != null ? exception.getMessage() : "Error desconocido"), 
+                        Toast.LENGTH_LONG).show();
+                }
+            });
+        }
+    }
+
     private void mostrarDialogoEditar(Medicamento medicamento) {
-        Toast.makeText(this, "Editar " + medicamento.getNombre() + " - Próximamente", Toast.LENGTH_SHORT).show();
+        // Abrir NuevaMedicinaActivity en modo edición
+        Intent intent = new Intent(BotiquinActivity.this, NuevaMedicinaActivity.class);
+        intent.putExtra("medicamento_id", medicamento.getId());
+        startActivity(intent);
     }
 
     private void mostrarDialogoEliminar(Medicamento medicamento) {
@@ -96,12 +176,28 @@ public class BotiquinActivity extends AppCompatActivity implements BotiquinAdapt
                 .setPositiveButton("Eliminar", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
-                        if (DatosPrueba.eliminarMedicamento(medicamento.getId())) {
-                            Toast.makeText(BotiquinActivity.this, "Medicamento eliminado", Toast.LENGTH_SHORT).show();
-                            cargarMedicamentos();
-                        } else {
-                            Toast.makeText(BotiquinActivity.this, "Error al eliminar", Toast.LENGTH_SHORT).show();
+                        // Verificar conexión a internet
+                        if (!NetworkUtils.isNetworkAvailable(BotiquinActivity.this)) {
+                            Toast.makeText(BotiquinActivity.this, "No hay conexión a internet", Toast.LENGTH_LONG).show();
+                            return;
                         }
+
+                        // Eliminar de Firebase
+                        firebaseService.eliminarMedicamento(medicamento.getId(), new FirebaseService.FirestoreCallback() {
+                            @Override
+                            public void onSuccess(Object result) {
+                                Toast.makeText(BotiquinActivity.this, "Medicamento eliminado", Toast.LENGTH_SHORT).show();
+                                cargarMedicamentos();
+                            }
+
+                            @Override
+                            public void onError(Exception exception) {
+                                Toast.makeText(BotiquinActivity.this, 
+                                    "Error al eliminar medicamento: " + 
+                                    (exception != null ? exception.getMessage() : "Error desconocido"), 
+                                    Toast.LENGTH_LONG).show();
+                            }
+                        });
                     }
                 })
                 .setNegativeButton("Cancelar", null)

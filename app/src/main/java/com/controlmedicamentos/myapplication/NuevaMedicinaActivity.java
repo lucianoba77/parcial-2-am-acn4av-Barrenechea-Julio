@@ -8,6 +8,7 @@ import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.View;
 import android.widget.ArrayAdapter;
+import android.widget.AdapterView;
 import android.widget.TimePicker;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
@@ -16,8 +17,12 @@ import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 import com.controlmedicamentos.myapplication.R;
 import com.controlmedicamentos.myapplication.models.Medicamento;
-import com.controlmedicamentos.myapplication.utils.DatosPrueba;
+import com.controlmedicamentos.myapplication.services.AuthService;
+import com.controlmedicamentos.myapplication.services.FirebaseService;
+import com.controlmedicamentos.myapplication.utils.NetworkUtils;
+import com.controlmedicamentos.myapplication.utils.ColorUtils;
 import java.util.Calendar;
+import java.util.List;
 
 public class NuevaMedicinaActivity extends AppCompatActivity {
 
@@ -29,18 +34,41 @@ public class NuevaMedicinaActivity extends AppCompatActivity {
     private TextInputEditText etTomasDiarias, etStockInicial, etDiasTratamiento;
     private TextInputLayout tilTomasDiarias, tilStockInicial, tilDiasTratamiento;
 
-    private int colorSeleccionado = R.color.medicamento_azul;
+    private String colorSeleccionadoHex = "#FFB6C1"; // Color por defecto (rosa pastel, índice 0)
     private Calendar fechaVencimiento = null;
     private String horaSeleccionada = "08:00";
+    private AuthService authService;
+    private FirebaseService firebaseService;
+    private Medicamento medicamentoEditar = null; // Medicamento que se está editando (null si es creación)
+    private boolean esEdicion = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_nueva_medicina);
 
+        // Inicializar servicios
+        authService = new AuthService();
+        firebaseService = new FirebaseService();
+
+        // Verificar autenticación
+        if (!authService.isUserLoggedIn()) {
+            finish(); // Cerrar si no hay usuario autenticado
+            return;
+        }
+
         inicializarVistas();
         configurarSpinner();
         configurarListeners();
+        
+        // Verificar si se está editando un medicamento
+        String medicamentoId = getIntent().getStringExtra("medicamento_id");
+        if (medicamentoId != null && !medicamentoId.isEmpty()) {
+            esEdicion = true;
+            cargarMedicamentoParaEditar(medicamentoId);
+        } else {
+            cargarCantidadMedicamentosParaColor();
+        }
     }
 
     private void inicializarVistas() {
@@ -65,18 +93,6 @@ public class NuevaMedicinaActivity extends AppCompatActivity {
         tilTomasDiarias = findViewById(R.id.tilTomasDiarias);
         tilStockInicial = findViewById(R.id.tilStockInicial);
         tilDiasTratamiento = findViewById(R.id.tilDiasTratamiento);
-    }
-
-    private void configurarSpinner() {
-        String[] presentaciones = {
-                "Comprimidos", "Cápsulas", "Jarabe", "Crema",
-                "Pomada", "Spray nasal", "Inyección", "Gotas"
-        };
-
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(this,
-                android.R.layout.simple_spinner_item, presentaciones);
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinnerPresentacion.setAdapter(adapter);
     }
 
     private void configurarListeners() {
@@ -173,11 +189,159 @@ public class NuevaMedicinaActivity extends AppCompatActivity {
     }
     private void guardarMedicamento() {
         if (validarFormulario()) {
-            Medicamento medicamento = crearMedicamento();
-            DatosPrueba.agregarMedicamento(medicamento);
+            // Verificar conexión a internet
+            if (!NetworkUtils.isNetworkAvailable(this)) {
+                Toast.makeText(this, "No hay conexión a internet", Toast.LENGTH_LONG).show();
+                return;
+            }
 
-            Toast.makeText(this, "Medicamento guardado exitosamente", Toast.LENGTH_SHORT).show();
-            finish();
+            Medicamento medicamento = crearMedicamento();
+
+            if (esEdicion && medicamentoEditar != null) {
+                // Actualizar medicamento existente
+                medicamento.setId(medicamentoEditar.getId());
+                
+                // En edición, si el usuario cambió el stock (campo Stock Inicial),
+                // mantener el stockActual como está si no se cambió explícitamente
+                // Pero si se cambió stockInicial, actualizar stockActual al nuevo valor
+                // (lógica de React: si se actualiza stockInicial y stockActual no está definido, usar stockInicial)
+                int nuevoStockInicial = medicamento.getStockInicial();
+                int stockInicialAnterior = medicamentoEditar.getStockInicial();
+                
+                if (nuevoStockInicial != stockInicialAnterior) {
+                    // Si se cambió stockInicial, y el stockActual es el mismo que antes,
+                    // significa que no se actualizó explícitamente, mantener el stockActual actual
+                    if (medicamento.getStockActual() == medicamentoEditar.getStockActual()) {
+                        // Mantener el stockActual como está (no actualizar al nuevo stockInicial)
+                        medicamento.setStockActual(medicamentoEditar.getStockActual());
+                    }
+                    // Si stockActual cambió, usar el nuevo valor
+                } else {
+                    // Si no se cambió stockInicial, mantener stockActual igual
+                    medicamento.setStockActual(medicamentoEditar.getStockActual());
+                }
+                
+                firebaseService.actualizarMedicamento(medicamento, new FirebaseService.FirestoreCallback() {
+                    @Override
+                    public void onSuccess(Object result) {
+                        Toast.makeText(NuevaMedicinaActivity.this, "Medicamento actualizado exitosamente", Toast.LENGTH_SHORT).show();
+                        finish(); // Cerrar actividad
+                    }
+
+                    @Override
+                    public void onError(Exception exception) {
+                        Toast.makeText(NuevaMedicinaActivity.this, 
+                            "Error al actualizar medicamento: " + 
+                            (exception != null ? exception.getMessage() : "Error desconocido"), 
+                            Toast.LENGTH_LONG).show();
+                    }
+                });
+            } else {
+                // Crear nuevo medicamento
+                firebaseService.guardarMedicamento(medicamento, new FirebaseService.FirestoreCallback() {
+                    @Override
+                    public void onSuccess(Object result) {
+                        Toast.makeText(NuevaMedicinaActivity.this, "Medicamento guardado exitosamente", Toast.LENGTH_SHORT).show();
+                        finish(); // Cerrar actividad
+                    }
+
+                    @Override
+                    public void onError(Exception exception) {
+                        Toast.makeText(NuevaMedicinaActivity.this, 
+                            "Error al guardar medicamento: " + 
+                            (exception != null ? exception.getMessage() : "Error desconocido"), 
+                            Toast.LENGTH_LONG).show();
+                    }
+                });
+            }
+        }
+    }
+    
+    /**
+     * Carga un medicamento para editarlo
+     */
+    private void cargarMedicamentoParaEditar(String medicamentoId) {
+        firebaseService.obtenerMedicamento(medicamentoId, new FirebaseService.FirestoreCallback() {
+            @Override
+            public void onSuccess(Object result) {
+                if (result instanceof Medicamento) {
+                    medicamentoEditar = (Medicamento) result;
+                    llenarFormularioConMedicamento(medicamentoEditar);
+                }
+            }
+
+            @Override
+            public void onError(Exception exception) {
+                Toast.makeText(NuevaMedicinaActivity.this, 
+                    "Error al cargar medicamento: " + 
+                    (exception != null ? exception.getMessage() : "Error desconocido"), 
+                    Toast.LENGTH_LONG).show();
+                finish(); // Cerrar si no se puede cargar
+            }
+        });
+    }
+    
+    /**
+     * Llena el formulario con los datos del medicamento a editar
+     */
+    private void llenarFormularioConMedicamento(Medicamento medicamento) {
+        // Actualizar título de la actividad
+        setTitle("Editar Medicamento");
+        
+        // Actualizar texto del botón
+        btnGuardar.setText("Guardar Cambios");
+        
+        etNombre.setText(medicamento.getNombre());
+        etAfeccion.setText(medicamento.getAfeccion());
+        etDetalles.setText(medicamento.getDetalles());
+        etTomasDiarias.setText(String.valueOf(medicamento.getTomasDiarias()));
+        etStockInicial.setText(String.valueOf(medicamento.getStockActual())); // Mostrar stock actual, no inicial
+        etDiasTratamiento.setText(medicamento.getDiasTratamiento() == -1 ? "" : String.valueOf(medicamento.getDiasTratamiento()));
+        
+        // Seleccionar presentación en el spinner
+        String presentacion = medicamento.getPresentacion();
+        String[] presentaciones = {
+            "Comprimidos", "Cápsulas", "Jarabe", "Crema",
+            "Pomada", "Spray nasal", "Inyección", "Gotas", "Parche"
+        };
+        for (int i = 0; i < presentaciones.length; i++) {
+            if (presentaciones[i].equalsIgnoreCase(presentacion)) {
+                spinnerPresentacion.setSelection(i);
+                break;
+            }
+        }
+        
+        // Configurar horario (si tiene tomas diarias > 0)
+        if (medicamento.getTomasDiarias() > 0 && medicamento.getHorarioPrimeraToma() != null 
+            && !medicamento.getHorarioPrimeraToma().isEmpty() 
+            && !medicamento.getHorarioPrimeraToma().equals("00:00")) {
+            horaSeleccionada = medicamento.getHorarioPrimeraToma();
+            btnSeleccionarHora.setText(horaSeleccionada);
+        } else if (medicamento.getTomasDiarias() == 0) {
+            // Si es medicamento ocasional, deshabilitar selector de hora
+            btnSeleccionarHora.setText("No aplica (medicamento ocasional)");
+            btnSeleccionarHora.setEnabled(false);
+        }
+        
+        // Configurar color
+        colorSeleccionadoHex = ColorUtils.intToHex(medicamento.getColor());
+        actualizarBotonColor();
+        
+        // Configurar fecha de vencimiento
+        if (medicamento.getFechaVencimiento() != null) {
+            fechaVencimiento = Calendar.getInstance();
+            fechaVencimiento.setTime(medicamento.getFechaVencimiento());
+            actualizarBotonFechaVencimiento();
+        }
+    }
+    
+    /**
+     * Actualiza el botón de fecha de vencimiento con la fecha seleccionada
+     */
+    private void actualizarBotonFechaVencimiento() {
+        if (fechaVencimiento != null) {
+            java.text.SimpleDateFormat formato = new java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault());
+            btnFechaVencimiento.setText(formato.format(fechaVencimiento.getTime()));
         }
     }
 
@@ -205,16 +369,46 @@ public class NuevaMedicinaActivity extends AppCompatActivity {
             tilTomasDiarias.setError(null);
         }
 
-        if (TextUtils.isEmpty(btnSeleccionarHora.getText())) {
-            Toast.makeText(this, "Debe seleccionar una hora", Toast.LENGTH_SHORT).show();
-            valido = false;
+        // Validar horario solo si tomas diarias > 0
+        int tomasDiarias = 0;
+        if (!TextUtils.isEmpty(etTomasDiarias.getText())) {
+            try {
+                tomasDiarias = Integer.parseInt(etTomasDiarias.getText().toString());
+            } catch (NumberFormatException e) {
+                // Ya se validará arriba
+            }
         }
+
+        if (tomasDiarias > 0) {
+            // Si tiene tomas diarias, requiere horario
+            if (TextUtils.isEmpty(btnSeleccionarHora.getText()) || 
+                btnSeleccionarHora.getText().toString().equals("Seleccionar hora")) {
+                Toast.makeText(this, "Debe seleccionar una hora para medicamentos con tomas diarias", Toast.LENGTH_SHORT).show();
+                valido = false;
+            }
+        }
+        // Si tomas diarias = 0, no requiere horario (medicamento ocasional)
 
         if (TextUtils.isEmpty(etStockInicial.getText())) {
             tilStockInicial.setError("El stock inicial es requerido");
             valido = false;
         } else {
             tilStockInicial.setError(null);
+            
+            // Validar fecha de vencimiento si stock > 0
+            try {
+                int stockInicial = Integer.parseInt(etStockInicial.getText().toString());
+                if (stockInicial > 0) {
+                    // Si tiene stock, DEBE tener fecha de vencimiento
+                    if (fechaVencimiento == null) {
+                        Toast.makeText(this, "Los medicamentos con stock deben tener fecha de vencimiento", Toast.LENGTH_LONG).show();
+                        valido = false;
+                    }
+                }
+                // Si stock = 0, no requiere fecha de vencimiento (para recordar comprar)
+            } catch (NumberFormatException e) {
+                // Ya se validará arriba
+            }
         }
 
         return valido;
@@ -226,19 +420,32 @@ public class NuevaMedicinaActivity extends AppCompatActivity {
         String detalles = etDetalles.getText().toString();
         String presentacion = spinnerPresentacion.getSelectedItem().toString();
         int tomasDiarias = Integer.parseInt(etTomasDiarias.getText().toString());
-        String horarioPrimeraToma = horaSeleccionada;
+        
+        // Si tomas diarias = 0, usar string vacío "" (medicamento ocasional)
+        // Esto es consistente con React: cuando tomasDiarias = 0, primeraToma = ""
+        String horarioPrimeraToma = (tomasDiarias > 0) ? horaSeleccionada : "";
+        
         int stockInicial = Integer.parseInt(etStockInicial.getText().toString());
-        int diasTratamiento = Integer.parseInt(etDiasTratamiento.getText().toString());
+        String diasTratamientoStr = etDiasTratamiento.getText().toString();
+        int diasTratamiento = diasTratamientoStr.isEmpty() ? -1 : Integer.parseInt(diasTratamientoStr);
 
-        String id = String.valueOf(System.currentTimeMillis());
+        // Si es edición, usar el ID del medicamento existente
+        // Si es creación, el ID se generará automáticamente en Firebase
+        String id = esEdicion && medicamentoEditar != null 
+            ? medicamentoEditar.getId() 
+            : "temp_" + System.currentTimeMillis();
 
+        // Convertir color hexadecimal a int ARGB
+        int colorInt = ColorUtils.hexToInt(colorSeleccionadoHex);
+        
         Medicamento medicamento = new Medicamento(
                 id, nombre, presentacion, tomasDiarias, horarioPrimeraToma,
-                afeccion, stockInicial, colorSeleccionado, diasTratamiento
+                afeccion, stockInicial, colorInt, diasTratamiento
         );
 
         medicamento.setDetalles(detalles);
 
+        // Fecha de vencimiento (ya validada en validarFormulario si stock > 0)
         if (fechaVencimiento != null) {
             medicamento.setFechaVencimiento(fechaVencimiento.getTime());
         }
@@ -246,25 +453,51 @@ public class NuevaMedicinaActivity extends AppCompatActivity {
         return medicamento;
     }
 
+    /**
+     * Carga la cantidad de medicamentos para asignar el color automáticamente
+     * Consistente con React: obtenerColorPorIndice(medicamentos.length)
+     */
+    private void cargarCantidadMedicamentosParaColor() {
+        firebaseService.obtenerMedicamentos(new FirebaseService.FirestoreListCallback() {
+            @Override
+            public void onSuccess(List<?> result) {
+                int cantidadMedicamentos = result != null ? result.size() : 0;
+                // Asignar color automáticamente según la cantidad de medicamentos
+                colorSeleccionadoHex = ColorUtils.obtenerColorPorIndice(cantidadMedicamentos);
+                // Actualizar el botón de color
+                actualizarBotonColor();
+            }
+
+            @Override
+            public void onError(Exception exception) {
+                // En caso de error, usar el color por defecto (índice 0)
+                colorSeleccionadoHex = ColorUtils.obtenerColorPorIndice(0);
+                actualizarBotonColor();
+            }
+        });
+    }
+    
+    /**
+     * Actualiza el botón de color con el color seleccionado
+     */
+    private void actualizarBotonColor() {
+        int colorInt = ColorUtils.hexToInt(colorSeleccionadoHex);
+        btnSeleccionarColor.setBackgroundColor(colorInt);
+        btnSeleccionarColor.setText("Color asignado");
+    }
+
     private void mostrarSelectorColor() {
-        String[] colores = {"Azul", "Verde", "Rojo", "Naranja", "Morado", "Amarillo"};
-        int[] valoresColores = {
-                R.color.medicamento_azul,
-                R.color.medicamento_verde,
-                R.color.medicamento_rojo,
-                R.color.medicamento_naranja,
-                R.color.medicamento_morado,
-                R.color.medicamento_amarillo
-        };
+        // Los colores se asignan automáticamente, pero permitimos selección manual opcional
+        String[] coloresNombres = {"Rosa pastel", "Azul pastel", "Verde pastel", "Amarillo pastel", "Lavanda pastel"};
+        String[] coloresHex = ColorUtils.COLORES_HEX;
 
         new AlertDialog.Builder(this)
-                .setTitle("Seleccionar Color")
-                .setItems(colores, new DialogInterface.OnClickListener() {
+                .setTitle("Seleccionar Color (Opcional)")
+                .setItems(coloresNombres, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
-                        colorSeleccionado = valoresColores[which];
-                        btnSeleccionarColor.setBackgroundColor(getResources().getColor(colorSeleccionado));
-                        btnSeleccionarColor.setText(colores[which]);
+                        colorSeleccionadoHex = coloresHex[which];
+                        actualizarBotonColor();
                     }
                 })
                 .show();

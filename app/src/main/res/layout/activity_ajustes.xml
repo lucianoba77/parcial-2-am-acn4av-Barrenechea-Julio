@@ -327,6 +327,24 @@
                 android:layout_height="@dimen/button_height_large"
                 android:text="@string/btn_reset_data"
                 android:textColor="@color/white"
+                android:backgroundTint="@color/error"
+                android:layout_marginBottom="@dimen/margin_medium" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnLogout"
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/button_height_large"
+                android:text="Cerrar Sesión"
+                android:textColor="@color/white"
+                android:backgroundTint="@color/primary_dark"
+                android:layout_marginBottom="@dimen/margin_medium" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnEliminarCuenta"
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/button_height_large"
+                android:text="🗑️ Eliminar Cuenta"
+                android:textColor="@color/white"
                 android:backgroundTint="@color/error" />
 
         </LinearLayout>

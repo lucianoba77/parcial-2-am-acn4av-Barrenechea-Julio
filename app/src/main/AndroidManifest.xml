@@ -20,15 +20,9 @@
         android:theme="@style/Theme.ControlMedicamentos"
         tools:targetApi="31">
 
-        <!-- Pantalla de login -->
+        <!-- Pantalla de login - Actividad principal -->
         <activity
             android:name=".LoginActivity"
-            android:exported="false"
-            android:theme="@style/Theme.ControlMedicamentos" />
-
-        <!-- Pantalla principal -->
-        <activity
-            android:name=".MainActivity"
             android:exported="true"
             android:theme="@style/Theme.ControlMedicamentos">
             <intent-filter>
@@ -36,6 +30,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Pantalla principal -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="false"
+            android:theme="@style/Theme.ControlMedicamentos" />
 
         <!-- Pantalla botiquín -->
         <activity
