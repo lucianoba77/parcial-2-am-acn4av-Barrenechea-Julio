@@ -18,6 +18,10 @@
     <string name="reset_password_dialog_message">Ingresa tu email y te enviaremos un enlace para recuperar tu contraseña</string>
     <string name="reset_password_success">Email de recuperación enviado. Revisa tu bandeja de entrada.</string>
     <string name="reset_password_error">Error al enviar email de recuperación. Verifica tu email e intenta nuevamente.</string>
+    <string name="login_with_google">Continuar con Google</string>
+    <string name="or_divider">O</string>
+    <!-- Google OAuth Web Client ID - Obtenido de google-services.json -->
+    <string name="default_web_client_id">938306231220-eglguura8gmu64thg88pf5r4cbc59oj3.apps.googleusercontent.com</string>
 
     <!-- Main Activity -->
     <string name="main_greeting">¡Hola, %s!</string>

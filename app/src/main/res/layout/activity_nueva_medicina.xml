@@ -3,27 +3,31 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/background">
+    android:background="@color/background"
+    android:fitsSystemWindows="true">
 
     <!-- Header -->
     <LinearLayout
+        android:id="@+id/headerLayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:padding="@dimen/padding_medium"
-        android:paddingTop="?attr/actionBarSize"
+        android:paddingTop="24dp"
+        android:minHeight="?attr/actionBarSize"
         android:background="@color/primary"
         android:gravity="center_vertical"
-        android:fitsSystemWindows="true">
+        android:layout_alignParentTop="true">
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/nueva_medicina_title"
-            android:textSize="@dimen/text_size_large"
+            android:textSize="@dimen/text_size_header"
             android:textColor="@color/white"
             android:textStyle="bold"
-            android:gravity="center" />
+            android:gravity="center"
+            android:paddingVertical="8dp" />
 
     </LinearLayout>
 
@@ -32,6 +36,7 @@
         android:id="@+id/scrollView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:layout_below="@+id/headerLayout"
         android:layout_above="@+id/layoutBotonesAccion"
         android:fillViewport="true">
 

@@ -125,6 +125,52 @@
                 app:strokeWidth="2dp"
                 style="@style/MedicineButton" />
 
+            <!-- Separador "O" -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center"
+                android:layout_marginTop="@dimen/margin_large"
+                android:layout_marginBottom="@dimen/margin_medium">
+
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="1dp"
+                    android:layout_weight="1"
+                    android:background="@android:color/darker_gray" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/or_divider"
+                    android:textSize="@dimen/text_size_medium"
+                    android:textColor="@android:color/darker_gray"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp" />
+
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="1dp"
+                    android:layout_weight="1"
+                    android:background="@android:color/darker_gray" />
+
+            </LinearLayout>
+
+            <!-- Botón Google Sign-In -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnGoogleSignIn"
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/button_height_large"
+                android:text="@string/login_with_google"
+                android:textSize="@dimen/text_size_large"
+                android:textColor="@color/black"
+                android:backgroundTint="@color/white"
+                app:strokeColor="@android:color/darker_gray"
+                app:strokeWidth="1dp"
+                android:layout_marginBottom="@dimen/margin_medium"
+                style="@style/MedicineButton" />
+
             <!-- ProgressBar para mostrar carga -->
             <ProgressBar
                 android:id="@+id/progressBar"

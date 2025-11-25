@@ -3,12 +3,40 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/background">
+    android:background="@color/background"
+    android:fitsSystemWindows="true">
+
+    <!-- Header con título -->
+    <LinearLayout
+        android:id="@+id/headerLayout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="@dimen/padding_medium"
+        android:paddingTop="24dp"
+        android:minHeight="?attr/actionBarSize"
+        android:background="@color/primary"
+        android:gravity="center_vertical"
+        android:layout_alignParentTop="true">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/botiquin_title"
+            android:textSize="@dimen/text_size_header"
+            android:textColor="@color/white"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:paddingVertical="8dp" />
+
+    </LinearLayout>
 
     <!-- ScrollView para el contenido -->
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:layout_below="@+id/headerLayout"
         android:layout_above="@+id/barraNavegacion"
         android:fillViewport="true">
 
@@ -16,29 +44,6 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical">
-
-            <!-- Header con título -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:padding="@dimen/padding_medium"
-                android:paddingTop="?attr/actionBarSize"
-                android:background="@color/primary"
-                android:gravity="center_vertical"
-                android:fitsSystemWindows="true">
-
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="@string/botiquin_title"
-                    android:textSize="@dimen/text_size_large"
-                    android:textColor="@color/white"
-                    android:textStyle="bold"
-                    android:gravity="center" />
-
-            </LinearLayout>
 
             <!-- Sección: Medicamentos con tratamiento -->
             <TextView

@@ -22,6 +22,7 @@ import com.controlmedicamentos.myapplication.services.AuthService;
 import com.controlmedicamentos.myapplication.services.FirebaseService;
 import com.controlmedicamentos.myapplication.utils.NetworkUtils;
 import com.controlmedicamentos.myapplication.utils.ColorUtils;
+import com.controlmedicamentos.myapplication.utils.AlarmScheduler;
 import java.util.Calendar;
 import java.util.List;
 
@@ -266,6 +267,12 @@ public class NuevaMedicinaActivity extends AppCompatActivity {
                 firebaseService.actualizarMedicamento(medicamento, new FirebaseService.FirestoreCallback() {
                     @Override
                     public void onSuccess(Object result) {
+                        // Programar alarmas para el medicamento actualizado
+                        if (result instanceof Medicamento) {
+                            Medicamento medicamentoActualizado = (Medicamento) result;
+                            AlarmScheduler alarmScheduler = new AlarmScheduler(NuevaMedicinaActivity.this);
+                            alarmScheduler.programarAlarmasMedicamento(medicamentoActualizado);
+                        }
                         Toast.makeText(NuevaMedicinaActivity.this, "Medicamento actualizado exitosamente", Toast.LENGTH_SHORT).show();
                         finish(); // Cerrar actividad
                     }
@@ -283,6 +290,12 @@ public class NuevaMedicinaActivity extends AppCompatActivity {
                 firebaseService.guardarMedicamento(medicamento, new FirebaseService.FirestoreCallback() {
                     @Override
                     public void onSuccess(Object result) {
+                        // Programar alarmas para el nuevo medicamento
+                        if (result instanceof Medicamento) {
+                            Medicamento medicamentoGuardado = (Medicamento) result;
+                            AlarmScheduler alarmScheduler = new AlarmScheduler(NuevaMedicinaActivity.this);
+                            alarmScheduler.programarAlarmasMedicamento(medicamentoGuardado);
+                        }
                         Toast.makeText(NuevaMedicinaActivity.this, "Medicamento guardado exitosamente", Toast.LENGTH_SHORT).show();
                         finish(); // Cerrar actividad
                     }

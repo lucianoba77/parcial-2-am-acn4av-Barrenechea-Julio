@@ -83,3 +83,4 @@ lint/reports/
 # Documentation files (except README.md)
 *.md
 !README.md
+node_modules

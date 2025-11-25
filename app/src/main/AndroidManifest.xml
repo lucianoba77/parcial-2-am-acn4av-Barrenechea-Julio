@@ -8,6 +8,9 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
 
     <application
         android:allowBackup="true"
@@ -60,6 +63,38 @@
             android:name=".AjustesActivity"
             android:exported="false"
             android:theme="@style/Theme.ControlMedicamentos" />
+
+        <!-- Activity para manejar callback de Google Calendar OAuth -->
+        <activity
+            android:name=".GoogleCalendarCallbackActivity"
+            android:exported="true"
+            android:theme="@style/Theme.ControlMedicamentos">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="com.controlmedicamentos.myapplication" 
+                      android:host="googlecalendar" />
+            </intent-filter>
+        </activity>
+
+        <!-- Receiver para alarmas de medicamentos -->
+        <receiver
+            android:name=".receivers.AlarmReceiver"
+            android:exported="false"
+            android:enabled="true" />
+
+        <!-- Receiver para reiniciar alarmas cuando el dispositivo se reinicia -->
+        <receiver
+            android:name=".receivers.BootReceiver"
+            android:exported="true"
+            android:enabled="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </receiver>
 
     </application>
 

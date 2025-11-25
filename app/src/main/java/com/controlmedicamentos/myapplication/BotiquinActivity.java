@@ -17,6 +17,7 @@ import com.controlmedicamentos.myapplication.models.Medicamento;
 import com.controlmedicamentos.myapplication.services.AuthService;
 import com.controlmedicamentos.myapplication.services.FirebaseService;
 import com.controlmedicamentos.myapplication.utils.NetworkUtils;
+import com.controlmedicamentos.myapplication.utils.AlarmScheduler;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -223,6 +224,10 @@ public class BotiquinActivity extends AppCompatActivity implements BotiquinAdapt
                             return;
                         }
 
+                        // Cancelar alarmas antes de eliminar
+                        AlarmScheduler alarmScheduler = new AlarmScheduler(BotiquinActivity.this);
+                        alarmScheduler.cancelarAlarmasMedicamento(medicamento);
+                        
                         firebaseService.eliminarMedicamento(medicamento.getId(), new FirebaseService.FirestoreCallback() {
                             @Override
                             public void onSuccess(Object result) {

@@ -22,8 +22,9 @@ import android.util.Log;
 public class LoginActivity extends AppCompatActivity {
 
     private static final String TAG = "LoginActivity";
+    private static final int RC_SIGN_IN = 9001;
     private TextInputEditText etEmail, etPassword;
-    private MaterialButton btnLogin, btnRegister;
+    private MaterialButton btnLogin, btnRegister, btnGoogleSignIn;
     private TextView tvOlvidoPassword;
     private ProgressBar progressBar;
     private AuthService authService;
@@ -36,6 +37,10 @@ public class LoginActivity extends AppCompatActivity {
 
         // Inicializar servicio de autenticación
         authService = new AuthService();
+        
+        // Inicializar Google Sign-In
+        String webClientId = getString(R.string.default_web_client_id);
+        authService.initializeGoogleSignIn(this, webClientId);
 
         // Verificar si ya hay un usuario autenticado
         verificarSesionExistente();
@@ -59,6 +64,7 @@ public class LoginActivity extends AppCompatActivity {
         etPassword = findViewById(R.id.etPassword);
         btnLogin = findViewById(R.id.btnLogin);
         btnRegister = findViewById(R.id.btnRegister);
+        btnGoogleSignIn = findViewById(R.id.btnGoogleSignIn);
         tvOlvidoPassword = findViewById(R.id.tvOlvidoPassword);
         
         // Intentar encontrar ProgressBar en el layout (si existe)
@@ -91,6 +97,16 @@ public class LoginActivity extends AppCompatActivity {
                 @Override
                 public void onClick(View v) {
                     mostrarDialogoRecuperarPassword();
+                }
+            });
+        }
+        
+        // Listener para Google Sign-In
+        if (btnGoogleSignIn != null) {
+            btnGoogleSignIn.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    realizarLoginGoogle();
                 }
             });
         }
@@ -225,8 +241,120 @@ public class LoginActivity extends AppCompatActivity {
         }
         btnLogin.setEnabled(!mostrar);
         btnRegister.setEnabled(!mostrar);
+        if (btnGoogleSignIn != null) {
+            btnGoogleSignIn.setEnabled(!mostrar);
+        }
         etEmail.setEnabled(!mostrar);
         etPassword.setEnabled(!mostrar);
+    }
+    
+    /**
+     * Inicia el flujo de login con Google
+     */
+    private void realizarLoginGoogle() {
+        // Verificar conexión a internet
+        if (!NetworkUtils.isNetworkAvailable(this)) {
+            Toast.makeText(this, "No hay conexión a internet", Toast.LENGTH_LONG).show();
+            return;
+        }
+        
+        // Verificar que Google Play Services esté disponible
+        if (!authService.isGooglePlayServicesAvailable(this)) {
+            Toast.makeText(this, 
+                "Google Play Services no está disponible. " +
+                "Por favor actualiza Google Play Services o usa un dispositivo con Google Play Store.",
+                Toast.LENGTH_LONG).show();
+            Log.w(TAG, "Google Play Services no disponible para Google Sign-In");
+            return;
+        }
+        
+        Intent signInIntent = authService.getGoogleSignInIntent();
+        if (signInIntent != null) {
+            startActivityForResult(signInIntent, RC_SIGN_IN);
+        } else {
+            Toast.makeText(this, "Error al inicializar Google Sign-In", Toast.LENGTH_LONG).show();
+        }
+    }
+    
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        
+        if (requestCode == RC_SIGN_IN) {
+            mostrarProgreso(true);
+            authService.handleGoogleSignInResult(data, new AuthService.AuthCallback() {
+                @Override
+                public void onSuccess(FirebaseUser user) {
+                    mostrarProgreso(false);
+                    Log.d(TAG, "Login con Google exitoso. Usuario UID: " + (user != null ? user.getUid() : "null"));
+                    Toast.makeText(LoginActivity.this, "¡Bienvenido con Google!", Toast.LENGTH_SHORT).show();
+                    
+                    // Verificar si el usuario ya existe en Firestore, si no, crearlo
+                    verificarYCrearUsuarioEnFirestore(user);
+                    
+                    irAMainActivity();
+                }
+                
+                @Override
+                public void onError(Exception exception) {
+                    mostrarProgreso(false);
+                    String mensaje = "Error al iniciar sesión con Google";
+                    if (exception != null && exception.getMessage() != null) {
+                        if (exception.getMessage().contains("12500")) {
+                            mensaje = "No se pudo iniciar sesión. Verifica que Google Play Services esté actualizado.";
+                        } else if (exception.getMessage().contains("10")) {
+                            mensaje = "Desarrollador error. Verifica la configuración de Google Sign-In.";
+                        } else {
+                            mensaje = "Error: " + exception.getMessage();
+                        }
+                    }
+                    Toast.makeText(LoginActivity.this, mensaje, Toast.LENGTH_LONG).show();
+                    Log.e(TAG, "Error en Google Sign-In", exception);
+                }
+            });
+        }
+    }
+    
+    /**
+     * Verifica si el usuario existe en Firestore y lo crea si no existe
+     */
+    private void verificarYCrearUsuarioEnFirestore(FirebaseUser firebaseUser) {
+        if (firebaseUser == null) {
+            return;
+        }
+        
+        com.controlmedicamentos.myapplication.services.FirebaseService firebaseService = 
+            new com.controlmedicamentos.myapplication.services.FirebaseService();
+        
+        firebaseService.obtenerUsuarioActual(new com.controlmedicamentos.myapplication.services.FirebaseService.FirestoreCallback() {
+            @Override
+            public void onSuccess(Object result) {
+                // Usuario ya existe, no hacer nada
+                Log.d(TAG, "Usuario ya existe en Firestore");
+            }
+            
+            @Override
+            public void onError(Exception exception) {
+                // Usuario no existe, crearlo
+                Log.d(TAG, "Usuario no existe en Firestore, creándolo...");
+                com.controlmedicamentos.myapplication.models.Usuario usuario = 
+                    new com.controlmedicamentos.myapplication.models.Usuario();
+                usuario.setNombre(firebaseUser.getDisplayName() != null ? firebaseUser.getDisplayName() : "Usuario Google");
+                usuario.setEmail(firebaseUser.getEmail());
+                
+                firebaseService.guardarUsuario(usuario, new com.controlmedicamentos.myapplication.services.FirebaseService.FirestoreCallback() {
+                    @Override
+                    public void onSuccess(Object result) {
+                        Log.d(TAG, "Usuario de Google creado en Firestore exitosamente");
+                    }
+                    
+                    @Override
+                    public void onError(Exception exception) {
+                        Log.e(TAG, "Error al crear usuario en Firestore", exception);
+                    }
+                });
+            }
+        });
     }
 
     private boolean validarCampos(String email, String password) {
